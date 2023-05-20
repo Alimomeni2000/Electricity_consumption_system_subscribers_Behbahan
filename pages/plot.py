@@ -69,8 +69,7 @@ class Plot():
         self.state= state
         st.title('تحلیل مصرف برق مشترکین بهبهان')
         self.months = ['None','فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
-        # self.seasons= ['بهار','تابستان','پاییز','زمستان']
-        
+       
         self.seasons = {1: 'بهار', 2: 'بهار', 3: 'بهار', 4: 'تابستان', 5: 'تابستان', 6: 'تابستان',
            7: 'پاییز', 8: 'پاییز', 9: 'پاییز', 10: 'زمستان', 11: 'زمستان', 12: 'زمستان'}
         self.yearseasons= ['1399 تابستان','1399 زمستان','1399 پاییز','1400 بهار','1400 تابستان','1400 پاییز']
@@ -101,17 +100,15 @@ class Plot():
             user = user_input.user_input_all()
 
             data=self.df
-        # st.write(data)
         month_data= data.iloc[:,10:36].groupby(['Year','Month']).sum().sum(axis=1).reset_index()
-        
-        # st.write(month_data)
+
         
         month_data['Sum (KW)'] = pd.DataFrame(month_data.iloc[:,2])
         month_data= month_data.drop(month_data.columns[2],axis=1)
         month_data['Avg (KW)']= month_data['Sum (KW)']/25
         month_data = month_data.round(3)
         month_data[['Month']] = month_data[['Month']].astype(int)
-        # st.write(month_data)
+
         if self.state == 0:
             if user['Customer'][0]==2:
                 month_data['Months'] =self.customer2 
@@ -136,7 +133,6 @@ class Plot():
         st.write('میانگین مصرف در ماه های مختلف')
         st.plotly_chart(fig7)
         Month=data.iloc[:,2:]
-
         
         df = data[data['Month']==self.months.index(user['Month'][0])]
         df = df[df['Year']==int(user['Year'][0])]
@@ -151,8 +147,7 @@ class Plot():
         sumdata = []
         for i in range(time1+7,time2):
             sumdata.append(df.iloc[:,i])
-            
-        
+                    
         df["Total selcted Time"]=pd.DataFrame(df.iloc[:,time1+7:time2+7].sum(axis=1))
         df= df.round(3)
         
@@ -189,9 +184,9 @@ class Plot():
         
         del newdata
         del data
+        del df
 
         st.write('---')
-        col = df.iloc[:,time1+7:time2+7].columns
         time=re.findall(r'\d+', y_axis_val)
         # st.write(a[0])
         st.markdown(f"مصرف روزانه **{user['Year'][0]} {user['Month'][0]}  از ساعت {time[0]} تا {time[1]}**")
@@ -208,7 +203,17 @@ class Plot():
 
         st.plotly_chart(fig4)
       
+      
     def histogram_box_plot(self):
+        def swap_rows(df, row1, row2):
+            df.iloc[row1], df.iloc[row2] =  df.iloc[row2].copy(), df.iloc[row1].copy()
+            return df
+        
+        def change_name_Columns(df, name_column,col):
+            df[name_column] = pd.DataFrame(df.iloc[:,col])
+            df= df.drop(df.columns[col],axis=1)
+            return df
+
         user_input=CollectUserInput(self.df)
         user=0
         if self.state == 0:
@@ -219,12 +224,14 @@ class Plot():
         data= data.iloc[:,7:]
         
         Season=data.iloc[:,2:]
+        
         Season['Season'] = Season['Month'].map(self.seasons)
         Season_data = Season.groupby(['Season','Year']).sum().sum(axis=1).reset_index()
 
         year_data= data.iloc[:,3:26].groupby(['Year']).sum().sum(axis=1).reset_index()
-        year_data['Sum (KW)'] = pd.DataFrame(year_data.iloc[:,1])
-        year_data= year_data.drop(year_data.columns[1],axis=1)
+        year_data= change_name_Columns(year_data,'Sum (KW)',1)
+        
+        
         year_data['Avg (KW)']= year_data['Sum (KW)']/25
         year_data = year_data.round(3)
         year_data[['Year']] = year_data[['Year']].astype(int)
@@ -237,10 +244,9 @@ class Plot():
         st.write("---")
         st.write('میانگین در یک سال ')
         st.plotly_chart(fig1)   
-        
-        
-        Season_data['Sum (KW)'] = pd.DataFrame(Season_data.iloc[:,2])
-        Season_data= Season_data.drop(Season_data.columns[2],axis=1)
+
+        Season_data= change_name_Columns(Season_data,'Sum (KW)',2)
+
         Season_data['Avg (KW)']= Season_data['Sum (KW)']/25
         Season_data = Season_data.round(3)
         Season_data.sort_values(by=['Year'],inplace=True)
@@ -255,20 +261,65 @@ class Plot():
         st.write("---")
         st.write('میانگین در یک فصل خاص')
         st.plotly_chart(fig1)
-        
 
-        
-        
         
         Season[['Year']] = Season[['Year']].astype(str)
         Season['Year_Season'] = Season['Year'] + ' ' + Season['Season']
+        AVG_Time_slider = st.slider("Hours :",0,23,(13,15))
+        
+        Year_Season_hours_mean=Season.iloc[:,AVG_Time_slider[0]:AVG_Time_slider[1]]
+        Year_Season_hours_sum=Season.iloc[:,AVG_Time_slider[0]:AVG_Time_slider[1]]
+        
+        Year_Season_hours_mean['Year_Season']=Season['Year_Season']
+        Year_Season_hours_sum['Year_Season']=Season['Year_Season']
+        
+        Year_Season_hours_mean = Year_Season_hours_mean.groupby(['Year_Season']).mean().mean(axis=1).reset_index()
+        Year_Season_hours_sum = Year_Season_hours_sum.groupby(['Year_Season']).sum().sum(axis=1).reset_index()
+        
+
+        
+        Year_Season_hours_mean=swap_rows(Year_Season_hours_mean,1,2)
+        Year_Season_hours_sum=swap_rows(Year_Season_hours_sum,1,2)
+        
+        Year_Season_hours_mean['Sum (Kw)'] = pd.DataFrame(Year_Season_hours_sum.iloc[:,1])
+        Year_Season_hours_mean['Avg (Kw)'] = pd.DataFrame(Year_Season_hours_mean.iloc[:,1])
+        
+        fig = px.histogram(Year_Season_hours_mean, x='Year_Season', y= 'Sum (Kw)',color='Year_Season')
+        st.write("---")
+        st.write('مجموع ساعات انتخابی در یک فصل خاص')
+        st.plotly_chart(fig)
+        
+        
+        fig = px.histogram(Year_Season_hours_mean, x='Year_Season', y= 'Avg (Kw)',color='Year_Season')
+        st.write("---")
+        st.write('میانگین ساعات انتخابی در یک فصل خاص')
+        st.plotly_chart(fig)        
+        del Year_Season_hours_sum
+        del Year_Season_hours_mean
         
         y_axis_val1 = st.selectbox('Select Y_Axis Vlaue for Season', options= Season.columns)
         
-        fig8 = px.histogram(Season, x='Year_Season', y= y_axis_val1,color='Year_Season')
+        
+        Year_Season_hour_mean = Season.groupby(['Year_Season'])[y_axis_val1].mean().reset_index()
+        Year_Season_hour_Sum = Season.groupby(['Year_Season'])[y_axis_val1].sum().reset_index()
+
+        Year_Season_hour_mean=swap_rows(Year_Season_hour_mean,1,2)
+        Year_Season_hour_Sum=swap_rows(Year_Season_hour_Sum,1,2)
+        
+        
+        fig = px.histogram(Year_Season_hour_Sum, x='Year_Season', y= y_axis_val1,color='Year_Season')
+        st.write("---")
+        st.write('مجموع ساعتی در یک فصل خاصی')
+        st.plotly_chart(fig)
+        
+        
+        fig = px.histogram(Year_Season_hour_mean, x='Year_Season', y= y_axis_val1,color='Year_Season')
         st.write("---")
         st.write('میانگین ساعتی در یک فصل خاصی')
-        st.plotly_chart(fig8)
+        st.plotly_chart(fig)      
+          
+        del Year_Season_hour_Sum
+        del Year_Season_hour_mean
         y_axis_val = st.selectbox('Select Y_Axis Vlaue', options= data.iloc[:,1:].columns)
 
         data1 = pd.DataFrame(data.groupby(['Year','Month'])[y_axis_val].mean())
@@ -311,16 +362,24 @@ class Plot():
         st.write("---")
         st.plotly_chart(fig)
         
-        # the 3d plot for model
-        # fig = go.Figure(data=[go.Mesh3d(z=data[y_axis_val],
-        #                 y=data['Total Avg. (KW)'],
-        #                 x=data['Date'],
-        #                 opacity=0.5,color='rgba(244,23,100,0.6)')])
-        # fig.update_layout(scene=dict(xaxis_showspikes=False,
-        #                             yaxis_showspikes=False))
-        # st.write("---")
-        # st.plotly_chart(fig)
- 
+        Year_Season_daily_mean=Season.iloc[:,0:23]
+
+        
+        
+        
+        Year_Season_daily_mean['Year']=Season['Year']
+        year_avg = Year_Season_daily_mean.groupby(['Year']).mean().mean(axis=1).reset_index()
+        year_avg= change_name_Columns(year_avg,'Year Avg (Kw)',1)
+        
+        Year_Season_daily_mean['Month']=Season['Month']
+        Month_avg = Year_Season_daily_mean.groupby(['Year','Month']).mean().mean(axis=1).reset_index()
+        Month_avg= change_name_Columns(Month_avg,'Daily Avg (Kw)',2)
+        
+        
+        Year_Season_daily_mean['Day']=Season['Day']
+        Daily_avg = Year_Season_daily_mean.groupby(['Year','Month','Day']).mean().mean(axis=1).reset_index()
+        Daily_avg= change_name_Columns(Daily_avg,'Daily Avg (Kw)',3)
+
     def heatmap(self):
         user_input=CollectUserInput(self.df)
         time1= 0
@@ -406,5 +465,3 @@ elif P_selectbox == 'یک مشتری':
     elif plots_selectbox =='نمودار سالانه':
         plot.histogram_box_plot()
         st.markdown("""---""")   
-
-
